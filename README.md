@@ -1,113 +1,108 @@
-# Half-Wit Cast Receiver
+# Deal/Breaker Cast Receiver
 
-This is the Chromecast receiver app for Half-Wit. It displays game content on a TV when cast from the Half-Wit Android app.
+This is the Chromecast receiver app for **Deal/Breaker**. It displays game content on a TV
+when a host casts from the Deal/Breaker Android or iOS app.
+
+It is a static Custom Web Receiver (no build step) — plain HTML/CSS/JS plus a handful of
+image and audio assets — served over HTTPS (GitHub Pages) and registered in the Google Cast
+Developer Console.
 
 ## Files
 
-- `index.html` - Main HTML structure with all screen layouts
-- `styles.css` - Half-Wit-branded styling
-- `receiver.js` - Cast receiver logic and message handling
-
-## Setup Instructions
-
-### 1. Create a GitHub Repository
-
-1. Go to https://github.com/new
-2. Create a **public** repository named `halfwit-cast-receiver`
-3. Don't initialize with README (we already have files)
-
-### 2. Push the Receiver Files
-
-From your terminal, navigate to the `cast-receiver` directory and run:
-
-```bash
-cd cast-receiver
-git init
-git add .
-git commit -m "Initial cast receiver implementation"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/halfwit-cast-receiver.git
-git push -u origin main
-```
-
-### 3. Enable GitHub Pages
-
-1. Go to your repository settings: `https://github.com/YOUR_USERNAME/halfwit-cast-receiver/settings`
-2. Scroll down to "Pages" section
-3. Under "Source", select `main` branch
-4. Click "Save"
-5. Your receiver will be available at: `https://YOUR_USERNAME.github.io/halfwit-cast-receiver/`
-
-### 4. Register a Custom Web Receiver
-
-1. Go to the Google Cast Developer Console: https://cast.google.com/publish
-2. Sign in with your Google account
-3. Pay the one-time $5 registration fee (if not already registered)
-4. Click "Add New Application"
-5. Select "Custom Receiver"
-6. Fill in:
-   - **Name**: Half-Wit
-   - **Receiver Application URL**: `https://YOUR_USERNAME.github.io/halfwit-cast-receiver/`
-7. Click "Save"
-8. Copy the **Application ID** (looks like: `ABCD1234`)
-
-### 5. Update the Android App
-
-Open `android/app/src/main/java/com/halfwit/app/services/CastOptionsProvider.kt` and replace:
-
-```kotlin
-const val RECEIVER_APP_ID = "YOUR_RECEIVER_APP_ID"
-```
-
-With your actual Application ID:
-
-```kotlin
-const val RECEIVER_APP_ID = "ABCD1234"  // Your actual ID
-```
-
-### 6. Add Test Devices (Development Only)
-
-While your app is unpublished, you need to register test devices:
-
-1. In the Cast Developer Console, click on your application
-2. Click "Add Cast Receiver Device"
-3. Enter your Chromecast's serial number (found in Google Home app under device settings)
-4. Wait 15 minutes for the device to be registered
-
-### 7. Publish (When Ready for Production)
-
-1. In the Cast Developer Console, click "Publish"
-2. Once published, any Chromecast can use your receiver
-
-## Testing Locally
-
-For local development testing:
-
-1. Install a local server: `npm install -g http-server`
-2. Run from the cast-receiver directory: `http-server -p 8080`
-3. Use Chrome's Cast dialog to test (note: actual Chromecast testing requires HTTPS)
+- `index.html` — screen layouts for every game phase
+- `styles.css` — neon-on-black Deal/Breaker styling (cyan `#48C8D0` / fuchsia `#F050D2` on black)
+- `receiver.js` — Cast receiver logic and message handling
+- `dealbreaker_logo.png` — brand logo (connecting / lobby / loading / end screens)
+- `icons/<id>.png` — the 12 player icons (boombox, bow, butterflies, dice, flask, lock,
+  lovebirds, magnet, mixtape, perfume, ring, vinyl) + `checkmark.png`; ids match the app's
+  `PlayerIcon` enum
+- `*.m4a` — `lobby_music` (looped lobby/results music), `countdown_bell`, `bell_ding`
 
 ## Message Protocol
 
-The receiver expects JSON messages with a `type` field indicating the screen to display:
+The app and receiver communicate on the custom namespace **`urn:x-cast:com.dealbreaker.game`**
+(must match `CastManager.CAST_NAMESPACE` in the app). The receiver expects JSON messages with a
+`type` field; the contract is defined by the app's `CastManager.kt` (and the iOS
+`CastMessages.swift` mirror).
 
-| Type | Description |
-|------|-------------|
-| `lobby` | Game lobby with player list |
-| `loading` | Loading game indicator |
-| `round_countdown` | Round number and countdown |
-| `answering` | Answer phase with progress |
-| `voting_transition` | "Time to Vote!" transition |
-| `matchup_voting` | Voting screen with prompt and answers |
-| `matchup_results` | Vote results for a matchup |
-| `round_results` | Round scores and leaderboard |
-| `game_results` | Final winner and standings |
-| `end` | End/disconnect screen |
+| Type | Screen / action |
+|------|-----------------|
+| `lobby` | Lobby: access code + player list |
+| `loading` | Loading-game indicator |
+| `loading_round` | Loading indicator between rounds |
+| `round_countdown` | Round number + countdown circle |
+| `answering` | "X of Y players have picked" (Deal/Breaker has no answer timer) |
+| `reveal` | 3 candidates across the top; the players who picked each drop in one-by-one |
+| `round_results` | Round scores + leaderboard (animated reorder to cumulative standings) |
+| `game_results` | Final standings + WINNER badge |
+| `end` | Goodbye / disconnect screen |
+| `music_start` / `music_fade_stop` / `music_stop` | Lobby/results background music control |
+| `play_countdown_bell` / `stop_countdown` / `play_bell` | Sound effects |
 
-See `receiver.js` for detailed message structure documentation.
+On `SENDER_CONNECTED` the receiver replies with `{"type":"receiver_ready"}` so the app knows
+it can start sending state.
+
+### `reveal` (pending app-side sender)
+
+The reveal screen is built and renders to this contract:
+
+```json
+{
+  "type": "reveal",
+  "roundNumber": 2, "totalRounds": 6, "category": "Worst First Date",
+  "candidates": [ { "candidateId": "c1", "name": "Vernon", "age": 34, "photo": "1980s_30s_vernon.jpg" } ],
+  "picks":      [ { "candidateId": "c1", "players": [ { "name": "Marlene", "iconId": "ring" } ] } ]
+}
+```
+
+The app's `CastBridge` does **not** send this yet — `GamePhase.REVEAL` is still stubbed in
+`CastBridge.kt` / `CastBridge.swift`. Until that sender is wired, the TV simply stays on the
+answering screen through the reveal phase.
+
+Candidate photos are loaded from a `candidates/<photo>` path; until those images are delivered
+to this repo the receiver shows a neon-initial placeholder (same as the app's in-game fallback).
+
+## Setup
+
+### 1. Deploy via GitHub Pages
+
+Enable GitHub Pages for this repo (Settings → Pages → Source: `main`). The receiver will be
+served at `https://<user>.github.io/dealbreaker-cast-receiver/`.
+
+### 2. Register a Custom Web Receiver
+
+1. Go to the Google Cast Developer Console: https://cast.google.com/publish
+2. Add a new **Custom Receiver** named **Deal/Breaker** with the GitHub Pages URL above.
+3. Copy the **Application ID** (e.g. `ABCD1234`).
+
+### 3. Point the apps at the new receiver
+
+Replace the placeholder receiver ID in both apps with the new Application ID:
+
+- Android: `RECEIVER_APP_ID` in
+  `android/app/src/main/java/com/dealbreaker/app/services/CastOptionsProvider.kt`
+- iOS: `RECEIVER_APP_ID` in `ios/DealBreaker/DealBreaker/Services/CastingService.swift`
+
+(Both currently still hold `A0C5BB02`, which is Half/Wit's receiver — casting will not work
+until this is swapped for the Deal/Breaker receiver ID.)
+
+### 4. Register test devices (development)
+
+While unpublished, add your Chromecast's serial number under the application in the Cast
+Developer Console and wait ~15 minutes before testing.
+
+## Testing locally
+
+```bash
+python -m http.server 8099
+```
+
+Open `http://localhost:8099/` in Chrome. The Cast SDK keeps trying to reach the on-device Cast
+IPC when run outside a Chromecast, so screens are best previewed by calling the `update*` /
+`showScreen` functions directly from the console.
 
 ## Customization
 
-- Colors are defined as CSS variables in `styles.css`
+- Colors are CSS variables (`--db-*`) at the top of `styles.css`
 - Screen layouts are in `index.html`
-- Message handling logic is in `receiver.js`
+- Message handling is in `receiver.js`
