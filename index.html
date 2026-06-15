@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Half-Wit - Cast Receiver</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Google Cast Receiver SDK -->
+    <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Connecting screen (default) -->
+        <div id="connecting-screen" class="screen active">
+            <img src="halfwit_logo.png" alt="Half-Wit" class="logo-image connecting-logo">
+            <div class="status">Connecting...</div>
+        </div>
+
+        <!-- Lobby screen -->
+        <div id="lobby-screen" class="screen">
+            <div class="lobby-container">
+                <!-- Left column: Logo and game details -->
+                <div class="lobby-left-column">
+                    <img src="halfwit_logo.png" alt="Half-Wit" class="logo-image">
+                    <div class="header">
+                        <div class="access-code-label">Access Code:</div>
+                        <div class="access-code"></div>
+                    </div>
+                    <div class="game-settings">
+                        <span class="player-count"></span>
+                        <span class="separator">|</span>
+                        <span class="round-count"></span>
+                    </div>
+                    <div class="answer-time"></div>
+                    <div class="anonymous-mode" style="display: none;">Anonymous Mode</div>
+                    <div class="waiting-message">Waiting for host to start...</div>
+                </div>
+                <!-- Right column: Players list -->
+                <div class="lobby-right-column">
+                    <div class="players-header">Players</div>
+                    <div class="player-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tutorial screen -->
+        <div id="tutorial-screen" class="screen">
+            <div class="tutorial-content">
+                <!-- Step 1: Welcome -->
+                <div class="tutorial-step" id="tutorial-step-1">
+                    <img src="halfwit_logo.png" alt="Half-Wit" class="logo-image tutorial-logo">
+                    <div class="tutorial-text tutorial-title">Welcome to Half/Wit!</div>
+                </div>
+
+                <!-- Step 2: How it Works -->
+                <div class="tutorial-step" id="tutorial-step-2">
+                    <div class="tutorial-text tutorial-subtitle">Here's How it Works...</div>
+                </div>
+
+                <!-- Step 3: Rounds -->
+                <div class="tutorial-step" id="tutorial-step-3">
+                    <div class="tutorial-text tutorial-subtitle">This Game Will Consist of</div>
+                    <div class="tutorial-rounds-number"></div>
+                    <div class="tutorial-text tutorial-subtitle">Rounds</div>
+                </div>
+
+                <!-- Step 4: Prompts + Answering Demo (two-column layout) -->
+                <div class="tutorial-step" id="tutorial-step-4">
+                    <div class="tutorial-demo-container">
+                        <!-- Left column: text -->
+                        <div class="tutorial-demo-left">
+                            <div class="tutorial-text tutorial-demo-text">
+                                You Will be Given<br><span class="highlight-lime">2 Prompts</span> at the Beginning of Each Round
+                            </div>
+                            <div class="tutorial-text tutorial-demo-text tutorial-demo-text-bottom">
+                                Answer BOTH Within the<br><span class="highlight-lime" id="tutorial-time-label"></span> Time Limit
+                            </div>
+                        </div>
+                        <!-- Right column: demo -->
+                        <div class="tutorial-demo-right">
+                            <div class="tutorial-mock-prompt" id="tutorial-prompt-1">
+                                <div class="tutorial-prompt-label"></div>
+                                <div class="tutorial-text-field">
+                                    <span class="tutorial-placeholder">Your answer (80 chars max)</span>
+                                    <span class="tutorial-typed-text"></span>
+                                </div>
+                            </div>
+                            <div class="tutorial-mock-prompt" id="tutorial-prompt-2">
+                                <div class="tutorial-prompt-label"></div>
+                                <div class="tutorial-text-field">
+                                    <span class="tutorial-placeholder">Your answer (80 chars max)</span>
+                                    <span class="tutorial-typed-text"></span>
+                                </div>
+                            </div>
+                            <div class="tutorial-submit-btn" id="tutorial-submit-btn">Submit Answers</div>
+                            <div class="tutorial-submitted-text" id="tutorial-submitted-text">Submitted!</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: Matched Up (horizontal cards with vs) -->
+                <div class="tutorial-step" id="tutorial-step-5">
+                    <div class="tutorial-text tutorial-body tutorial-step5-heading">
+                        Your Responses will be <span class="highlight-lime">Matched Up</span> Against Another Player
+                    </div>
+                    <div class="tutorial-vs-container">
+                        <div class="tutorial-response-card tutorial-card-pink" id="tutorial-vs-pink">
+                            <div class="tutorial-response-text">A clever answer!</div>
+                        </div>
+                        <div class="tutorial-vs-badge" id="tutorial-vs-text">vs</div>
+                        <div class="tutorial-response-card tutorial-card-green" id="tutorial-vs-green">
+                            <div class="tutorial-response-text">A witty response!</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 6: Earn Points + Bonus + Remember -->
+                <div class="tutorial-step" id="tutorial-step-6">
+                    <div class="tutorial-text tutorial-body">
+                        Earn <span class="highlight-lime">1 Point</span> for Each Player That<br>Votes for Your Response
+                    </div>
+                    <div class="tutorial-plus-one-container">
+                        <div class="tutorial-plus-one" id="tutorial-plus-one">+1</div>
+                    </div>
+                    <div class="tutorial-bonus-text" id="tutorial-bonus-text">
+                        <div class="tutorial-text tutorial-body">
+                            Plus Earn a <span class="highlight-lime">Matchup Bonus</span> if You Receive<br>More Votes than Your Opponent
+                        </div>
+                    </div>
+                    <div class="tutorial-plus-one-container">
+                        <div class="tutorial-plus-one" id="tutorial-plus-one-bonus">+1</div>
+                    </div>
+                    <div class="tutorial-remember" id="tutorial-remember">
+                        <div class="tutorial-text tutorial-body">
+                            But Remember...<br><br>
+                            You <span class="highlight-pink tutorial-underline">Don't</span> Get to Vote on<br>Prompts You Answered
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 7: Get Ready -->
+                <div class="tutorial-step" id="tutorial-step-7">
+                    <div class="tutorial-text tutorial-ready-title">That's It!</div>
+                    <div class="tutorial-text tutorial-body">Now Get Your Wits About You<br>and Get Ready to Play!</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading screen -->
+        <div id="loading-screen" class="screen">
+            <img src="halfwit_logo.png" alt="Half-Wit" class="logo-image">
+            <div class="loader"></div>
+            <div class="status">Loading Game...</div>
+        </div>
+
+        <!-- Round countdown screen -->
+        <div id="countdown-screen" class="screen">
+            <div class="round-label">Round <span class="round-number">1</span></div>
+            <div class="countdown-circle">
+                <span class="countdown-number">5</span>
+            </div>
+            <div class="round-progress">of <span class="total-rounds">3</span> rounds</div>
+        </div>
+
+        <!-- Answering screen -->
+        <div id="answering-screen" class="screen">
+            <div class="phase-label">Round <span class="round-number">1</span></div>
+            <div class="countdown-timer">
+                <div class="timer-circle">
+                    <span class="timer-seconds">60</span>
+                </div>
+            </div>
+            <div class="answer-status">
+                Answers Received for <span class="answers-received">0</span> of <span class="total-players">8</span> Players
+            </div>
+        </div>
+
+        <!-- Voting transition screen -->
+        <div id="voting-transition-screen" class="screen">
+            <div class="big-text">Time to Vote!</div>
+        </div>
+
+        <!-- Matchup voting screen -->
+        <div id="matchup-voting-screen" class="screen">
+            <div class="prompt-card">
+                <div class="prompt-text"></div>
+            </div>
+            <div class="answers-container">
+                <div class="answer-card answer-1">
+                    <div class="answer-text"></div>
+                </div>
+                <div class="vs-badge">VS</div>
+                <div class="answer-card answer-2">
+                    <div class="answer-text"></div>
+                </div>
+            </div>
+            <div class="voting-footer">
+                <div class="countdown-timer">
+                    <span class="timer-seconds">30</span>s
+                </div>
+                <div class="vote-status">
+                    Votes Received for <span class="votes-received">0</span> of <span class="eligible-voters">6</span> Players
+                </div>
+                <div class="matchup-progress">
+                    Matchup <span class="matchup-number">1</span> of <span class="total-matchups">4</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Matchup results screen -->
+        <div id="matchup-results-screen" class="screen">
+            <div class="prompt-card">
+                <div class="prompt-text"></div>
+            </div>
+            <div class="results-container">
+                <div class="result-card result-1">
+                    <div class="player-name"></div>
+                    <div class="answer-text"></div>
+                    <div class="result-footer">
+                        <div class="voter-icons"></div>
+                        <div class="score-section">
+                            <div class="total-points">+<span class="points">0</span></div>
+                            <div class="score-breakdown">
+                                <div class="votes-line">Votes: +<span class="votes">0</span></div>
+                                <div class="bonus-line">Matchup Bonus: +1</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="result-card result-2">
+                    <div class="player-name"></div>
+                    <div class="answer-text"></div>
+                    <div class="result-footer">
+                        <div class="voter-icons"></div>
+                        <div class="score-section">
+                            <div class="total-points">+<span class="points">0</span></div>
+                            <div class="score-breakdown">
+                                <div class="votes-line">Votes: +<span class="votes">0</span></div>
+                                <div class="bonus-line">Matchup Bonus: +1</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="abstain-section">
+                <div class="abstain-label">Abstained:</div>
+                <div class="abstain-icons"></div>
+            </div>
+        </div>
+
+        <!-- Round results screen -->
+        <div id="round-results-screen" class="screen">
+            <div class="results-header">
+                <div class="round-label">Round <span class="round-number">1</span> Results</div>
+            </div>
+            <div class="scores-header-container">
+                <span class="scores-header-text round-scores-text">Round Scores</span>
+                <span class="scores-header-text current-standings-text">Current Standings</span>
+            </div>
+            <div class="leaderboard"></div>
+        </div>
+
+        <!-- Game results screen -->
+        <div id="game-results-screen" class="screen">
+            <div class="game-results-container">
+                <div class="game-results-header">Game Results</div>
+                <div class="leaderboard"></div>
+            </div>
+        </div>
+
+        <!-- End screen -->
+        <div id="end-screen" class="screen">
+            <img src="halfwit_logo.png" alt="Half-Wit" class="logo-image">
+            <div class="status">Thanks for playing!</div>
+        </div>
+    </div>
+
+    <!-- Single audio element for all sounds (lobby music + SFX) -->
+    <!-- Chromecast only outputs from one audio element -->
+    <audio id="game-audio" src="lobby_music.m4a" preload="auto" loop></audio>
+
+    <script src="receiver.js"></script>
+</body>
+</html>
