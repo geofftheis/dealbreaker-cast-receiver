@@ -310,7 +310,7 @@ body {
     align-items: center;
     text-align: center;
     padding: 0 24px;
-    padding-top: clamp(40px, 9vh, 110px);
+    padding-top: clamp(12px, 2vh, 32px);
 }
 
 .intro-category {
