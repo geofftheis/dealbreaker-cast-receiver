@@ -18,6 +18,7 @@ const screens = {
     loading: document.getElementById('loading-screen'),
     countdown: document.getElementById('countdown-screen'),
     answering: document.getElementById('answering-screen'),
+    roundIntro: document.getElementById('round-intro-screen'),
     reveal: document.getElementById('reveal-screen'),
     roundResults: document.getElementById('round-results-screen'),
     gameResults: document.getElementById('game-results-screen'),
@@ -30,6 +31,11 @@ let currentScreen = 'connecting';
  * Show a specific screen and hide all others
  */
 function showScreen(screenName) {
+    // If a round intro is mid-animation and another phase takes the screen, cancel it.
+    if (introPlaying && screenName !== 'roundIntro') {
+        clearIntroTimeouts();
+    }
+
     Object.keys(screens).forEach(name => {
         if (screens[name]) {
             screens[name].classList.remove('active');
@@ -231,9 +237,15 @@ function handleMessage(message) {
                 showScreen('countdown');
                 break;
 
+            case 'round_intro':
+                playRoundIntro(data);
+                break;
+
             case 'answering':
                 updateAnsweringScreen(data);
-                showScreen('answering');
+                // While the per-round intro is animating it owns the screen; just keep the
+                // submitted-count fresh and let the intro hand off to the answering screen.
+                if (!introPlaying) showScreen('answering');
                 break;
 
             case 'reveal':
@@ -346,6 +358,7 @@ function updateCountdownScreen(data) {
     const screen = screens.countdown;
 
     screen.querySelector('.round-number').textContent = data.roundNumber;
+    screen.querySelector('.round-category').textContent = data.category || '';
     screen.querySelector('.countdown-number').textContent = data.secondsRemaining;
     screen.querySelector('.total-rounds').textContent = data.totalRounds;
 }
@@ -360,6 +373,139 @@ function updateAnsweringScreen(data) {
     screen.querySelector('.round-number').textContent = data.roundNumber;
     screen.querySelector('.answers-received').textContent = data.answersReceived;
     screen.querySelector('.total-players').textContent = data.totalPlayers;
+}
+
+// ── Round Intro Animation ───────────────────────────────────────────
+// Mirrors the phones' RoundIntroOverlay: round 1 flies each candidate's photo + name in with a
+// bounce ("Candidate #N"); rounds 2-6 fade each candidate in and fly that round's new
+// characteristic in underneath. The category sits as a header throughout. It plays once per round
+// at the start of answering, then hands off to the answering (submitted-count) screen.
+
+let introTimeouts = [];
+let introPlaying = false;
+let lastIntroRound = 0;
+
+function clearIntroTimeouts() {
+    introTimeouts.forEach(id => clearTimeout(id));
+    introTimeouts = [];
+    introPlaying = false;
+}
+
+// Bouncy spring-ish easing (overshoot) to approximate the app's Compose/SwiftUI spring.
+const INTRO_BOUNCE = 'transform 700ms cubic-bezier(0.34, 1.56, 0.64, 1)';
+
+function introFadeTo(el, opacity, ms) {
+    el.style.transition = 'opacity ' + ms + 'ms ease';
+    el.style.opacity = String(opacity);
+}
+function introPlaceOff(el, px) {
+    el.style.transition = 'none';
+    el.style.transform = 'translateX(' + px + 'px)';
+    el.style.opacity = '1';
+    void el.offsetWidth; // commit the off-screen position before animating in
+}
+function introSlideIn(el) {
+    el.style.transition = INTRO_BOUNCE;
+    el.style.transform = 'translateX(0)';
+}
+function introSlideOffLeft(el, px) {
+    el.style.transition = 'transform 600ms ease';
+    el.style.transform = 'translateX(' + (-px) + 'px)';
+}
+
+function playRoundIntro(data) {
+    const round = data.roundNumber;
+    // Don't replay for a round we've already shown (e.g. casting (re)connects mid-round).
+    if (round === lastIntroRound && (introPlaying || currentScreen === 'answering')) return;
+
+    clearIntroTimeouts();
+    introPlaying = true;
+    lastIntroRound = round;
+
+    const cands = (data.candidates || []).slice().sort((a, b) => a.candidateId - b.candidateId);
+    const screen = screens.roundIntro;
+    const categoryEl = screen.querySelector('.intro-category');
+    const labelEl = screen.querySelector('.intro-label');
+    const cardEl = screen.querySelector('.intro-card');
+    const nameEl = screen.querySelector('.intro-name');
+    const charEl = screen.querySelector('.intro-char');
+    const photoHolder = screen.querySelector('.intro-photo-holder');
+
+    const off = Math.max(window.innerWidth, 600) * 1.3;
+
+    // Reset all animated pieces to their hidden starting state.
+    categoryEl.textContent = data.category || '';
+    categoryEl.style.transition = 'none'; categoryEl.style.opacity = '0';
+    labelEl.style.transition = 'none'; labelEl.style.opacity = '0'; labelEl.style.transform = 'translateX(0)'; labelEl.textContent = '';
+    cardEl.style.transition = 'none'; cardEl.style.opacity = '0'; cardEl.style.transform = 'translateX(0)';
+    charEl.style.transition = 'none'; charEl.style.opacity = '0'; charEl.style.transform = 'translateX(0)'; charEl.textContent = '';
+    labelEl.style.display = round === 1 ? '' : 'none';
+    charEl.style.display = round >= 2 ? '' : 'none';
+
+    function setCandidate(cand) {
+        photoHolder.innerHTML = '';
+        photoHolder.appendChild(createCandidatePhoto({ name: cand.name, photo: cand.photo }));
+        nameEl.textContent = cand.name || '';
+    }
+
+    showScreen('roundIntro');
+
+    let t = 0;
+    const at = (fn) => { introTimeouts.push(setTimeout(fn, t)); };
+
+    // Category header fades in and stays for the whole sequence.
+    at(() => introFadeTo(categoryEl, 1, 300));
+    t += 300;
+
+    if (round === 1) {
+        // First Impression: walk the 3 candidates, each photo+name flying in then off.
+        cands.forEach((cand, i) => {
+            if (i === 0) {
+                at(() => { labelEl.textContent = 'Candidate #1'; introPlaceOff(labelEl, off); });
+                t += 1000;
+                at(() => introSlideIn(labelEl));
+                t += 700;
+            } else {
+                t += 1000;
+                at(() => { labelEl.textContent = 'Candidate #' + (i + 1); introFadeTo(labelEl, 1, 500); });
+                t += 500;
+            }
+            t += 1000;
+            at(() => { setCandidate(cand); introPlaceOff(cardEl, off); introSlideIn(cardEl); });
+            t += 700;
+            t += 4000; // hold
+            at(() => { introFadeTo(labelEl, 0, 500); introSlideOffLeft(cardEl, off); });
+            t += 600;
+            at(() => { cardEl.style.opacity = '0'; });
+        });
+    } else {
+        // Rounds 2-6: fade each candidate in, then fly that round's new characteristic in.
+        cands.forEach((cand, i) => {
+            if (i === 0) {
+                at(() => { setCandidate(cand); charEl.style.opacity = '0'; cardEl.style.transform = 'translateX(0)'; introFadeTo(cardEl, 1, 1000); });
+                t += 1000;
+            } else {
+                at(() => { introFadeTo(charEl, 0, 1000); introFadeTo(cardEl, 0, 1000); });
+                t += 1000;
+                at(() => { setCandidate(cand); charEl.style.opacity = '0'; charEl.style.transform = 'translateX(0)'; introFadeTo(cardEl, 1, 1000); });
+                t += 1000;
+            }
+            t += 1000;
+            at(() => { charEl.textContent = cand.characteristic || ''; introPlaceOff(charEl, off); introSlideIn(charEl); });
+            t += 700;
+            t += 3000; // hold
+        });
+    }
+
+    // Fade everything out, then hand off to the answering (submitted-count) screen.
+    at(() => {
+        introFadeTo(categoryEl, 0, 500);
+        introFadeTo(labelEl, 0, 500);
+        introFadeTo(cardEl, 0, 500);
+        introFadeTo(charEl, 0, 500);
+    });
+    t += 600;
+    at(() => { clearIntroTimeouts(); showScreen('answering'); });
 }
 
 /**

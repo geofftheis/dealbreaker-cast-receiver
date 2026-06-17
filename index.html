@@ -49,6 +49,7 @@
         <!-- Round countdown screen -->
         <div id="countdown-screen" class="screen">
             <div class="round-label">Round <span class="round-number">1</span></div>
+            <div class="round-category"></div>
             <div class="countdown-circle">
                 <span class="countdown-number">3</span>
             </div>
@@ -61,6 +62,19 @@
             <div class="answer-heading">Choosing Dates</div>
             <div class="answer-count"><span class="answers-received">0</span> / <span class="total-players">8</span></div>
             <div class="answer-status">players have picked</div>
+        </div>
+
+        <!-- Round intro: the per-round reveal animation (photo / new characteristic), mirrors the phones -->
+        <div id="round-intro-screen" class="screen">
+            <div class="intro-content">
+                <div class="intro-category"></div>
+                <div class="intro-label"></div>
+                <div class="intro-card">
+                    <div class="intro-photo-holder"></div>
+                    <div class="intro-name"></div>
+                </div>
+                <div class="intro-char"></div>
+            </div>
         </div>
 
         <!-- Reveal screen — 3 candidates across the top, picks drop in one-by-one -->
