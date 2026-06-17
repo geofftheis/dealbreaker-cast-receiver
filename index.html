@@ -56,14 +56,6 @@
             <div class="round-progress">of <span class="total-rounds">6</span> rounds</div>
         </div>
 
-        <!-- Answering screen (no timer in Deal/Breaker) -->
-        <div id="answering-screen" class="screen">
-            <div class="phase-label">Round <span class="round-number">1</span></div>
-            <div class="answer-heading">Choosing Dates</div>
-            <div class="answer-count"><span class="answers-received">0</span> / <span class="total-players">8</span></div>
-            <div class="answer-status">players have picked</div>
-        </div>
-
         <!-- Round intro: the per-round reveal animation (photo / new characteristic), mirrors the phones -->
         <div id="round-intro-screen" class="screen">
             <div class="intro-content">
@@ -77,10 +69,12 @@
             </div>
         </div>
 
-        <!-- Reveal screen — 3 candidates across the top, picks drop in one-by-one -->
-        <div id="reveal-screen" class="screen">
-            <div class="reveal-header">Who Picked Who?</div>
-            <div class="reveal-candidates"></div>
+        <!-- Candidate board: shown for the whole answer phase (name / photo / cumulative
+             characteristics + a small submitted-count) and through the reveal (characteristics
+             fade out; the players who picked each candidate drop in underneath, one at a time). -->
+        <div id="board-screen" class="screen">
+            <div class="board-status"></div>
+            <div class="board-candidates"></div>
         </div>
 
         <!-- Round results screen -->

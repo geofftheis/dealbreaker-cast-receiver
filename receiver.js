@@ -17,9 +17,8 @@ const screens = {
     lobby: document.getElementById('lobby-screen'),
     loading: document.getElementById('loading-screen'),
     countdown: document.getElementById('countdown-screen'),
-    answering: document.getElementById('answering-screen'),
     roundIntro: document.getElementById('round-intro-screen'),
-    reveal: document.getElementById('reveal-screen'),
+    board: document.getElementById('board-screen'),
     roundResults: document.getElementById('round-results-screen'),
     gameResults: document.getElementById('game-results-screen'),
     end: document.getElementById('end-screen')
@@ -34,6 +33,10 @@ function showScreen(screenName) {
     // If a round intro is mid-animation and another phase takes the screen, cancel it.
     if (introPlaying && screenName !== 'roundIntro') {
         clearIntroTimeouts();
+    }
+    // Leaving the board cancels any in-progress reveal stagger.
+    if (currentScreen === 'board' && screenName !== 'board') {
+        clearBoardTimeouts();
     }
 
     Object.keys(screens).forEach(name => {
@@ -242,15 +245,15 @@ function handleMessage(message) {
                 break;
 
             case 'answering':
-                updateAnsweringScreen(data);
-                // While the per-round intro is animating it owns the screen; just keep the
-                // submitted-count fresh and let the intro hand off to the answering screen.
-                if (!introPlaying) showScreen('answering');
+                // The board owns the screen for the whole answer phase; just keep the
+                // submitted-count fresh. (During the intro the board isn't shown yet — the count
+                // is applied when the intro hands off to the board.)
+                boardCount = { received: data.answersReceived, total: data.totalPlayers };
+                if (currentScreen === 'board' && !boardRevealed) updateBoardStatus();
                 break;
 
             case 'reveal':
-                updateRevealScreen(data);
-                showScreen('reveal');
+                revealBoard(data);
                 break;
 
             case 'round_results':
@@ -363,16 +366,139 @@ function updateCountdownScreen(data) {
     screen.querySelector('.total-rounds').textContent = data.totalRounds;
 }
 
-/**
- * Update answering screen — Deal/Breaker has no answer timer, so this just
- * shows how many players have locked in their picks.
- */
-function updateAnsweringScreen(data) {
-    const screen = screens.answering;
+// ── Candidate Board (answer phase + reveal) ─────────────────────────
+// The persistent 3-candidate display: name on top, photo, then the cumulative characteristics.
+// Shown for the whole answer phase with a small "X of Y Players Submitted" status. On reveal the
+// characteristics fade out and the players who picked each candidate drop in underneath, one at a
+// time (~1.8s apart, left to right) to roughly match the devices.
 
-    screen.querySelector('.round-number').textContent = data.roundNumber;
-    screen.querySelector('.answers-received').textContent = data.answersReceived;
-    screen.querySelector('.total-players').textContent = data.totalPlayers;
+let boardCandidatesData = [];
+let boardCount = { received: 0, total: 0 };
+let boardRevealed = false;
+let boardTimeouts = [];
+
+function clearBoardTimeouts() {
+    boardTimeouts.forEach(id => clearTimeout(id));
+    boardTimeouts = [];
+}
+
+function updateBoardStatus() {
+    const el = screens.board.querySelector('.board-status');
+    el.textContent = boardRevealed
+        ? 'Who Picked Who?'
+        : boardCount.received + ' of ' + boardCount.total + ' Players Submitted';
+}
+
+function renderBoard() {
+    const container = screens.board.querySelector('.board-candidates');
+    container.innerHTML = '';
+    boardCandidatesData.forEach(cand => {
+        const col = document.createElement('div');
+        col.className = 'board-candidate';
+        col.setAttribute('data-candidate-id', cand.candidateId);
+
+        const name = document.createElement('div');
+        name.className = 'board-name';
+        name.textContent = cand.name || '';
+
+        const photoHolder = document.createElement('div');
+        photoHolder.className = 'board-photo-holder';
+        photoHolder.appendChild(createCandidatePhoto({ name: cand.name, photo: cand.photo }));
+
+        const chars = document.createElement('div');
+        chars.className = 'board-chars';
+        (cand.characteristics || []).forEach(value => {
+            const row = document.createElement('div');
+            row.className = 'board-char';
+            const bullet = document.createElement('span');
+            bullet.className = 'board-bullet';
+            bullet.textContent = '•';
+            const text = document.createElement('span');
+            text.className = 'board-char-text';
+            text.textContent = value;
+            row.appendChild(bullet);
+            row.appendChild(text);
+            chars.appendChild(row);
+        });
+
+        const picks = document.createElement('div');
+        picks.className = 'board-picks';
+
+        col.appendChild(name);
+        col.appendChild(photoHolder);
+        col.appendChild(chars);
+        col.appendChild(picks);
+        container.appendChild(col);
+    });
+}
+
+// Show the board for the answer phase: the 3 profiles + the submitted-count status.
+function showBoardAnswering() {
+    clearBoardTimeouts();
+    boardRevealed = false;
+    renderBoard();
+    updateBoardStatus();
+    showScreen('board');
+}
+
+function buildPickerChip(player) {
+    const chip = document.createElement('div');
+    chip.className = 'board-pick';
+    const icon = document.createElement('span');
+    icon.className = 'icon';
+    icon.appendChild(createIconImg(player.iconId));
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = player.name;
+    chip.appendChild(icon);
+    chip.appendChild(name);
+    return chip;
+}
+
+// Reveal: fade the characteristics out and drop the players who picked each candidate in
+// underneath, one at a time (~1.8s apart), grouped left to right — roughly synced to the devices.
+function revealBoard(data) {
+    clearBoardTimeouts();
+
+    // (Re)build the board if needed — e.g. casting connected mid-reveal.
+    if (data.candidates && data.candidates.length) boardCandidatesData = data.candidates;
+    if (currentScreen !== 'board' || !screens.board.querySelector('.board-candidate')) {
+        renderBoard();
+    }
+
+    boardRevealed = true;
+    showScreen('board');
+    updateBoardStatus();
+
+    // Build hidden picker chips per candidate; collect them left-to-right for the staggered reveal.
+    const picksByCandidate = {};
+    (data.picks || []).forEach(p => { picksByCandidate[p.candidateId] = p.players || []; });
+
+    const order = [];
+    boardCandidatesData.forEach(cand => {
+        const col = screens.board.querySelector('.board-candidate[data-candidate-id="' + cand.candidateId + '"]');
+        if (!col) return;
+        const picksWrap = col.querySelector('.board-picks');
+        picksWrap.innerHTML = '';
+        (picksByCandidate[cand.candidateId] || []).forEach(player => {
+            const chip = buildPickerChip(player);
+            picksWrap.appendChild(chip);
+            order.push(chip);
+        });
+    });
+
+    // Fade the characteristics out, then reveal the picks one at a time.
+    const charBlocks = screens.board.querySelectorAll('.board-chars');
+    charBlocks.forEach(c => { c.style.transition = 'opacity 600ms ease'; c.style.opacity = '0'; });
+
+    boardTimeouts.push(setTimeout(() => {
+        charBlocks.forEach(c => { c.style.display = 'none'; });
+        let delay = 0;
+        order.forEach(chip => {
+            boardTimeouts.push(setTimeout(() => chip.classList.add('visible'), delay));
+            delay += 1800;
+        });
+    }, 650));
 }
 
 // ── Round Intro Animation ───────────────────────────────────────────
@@ -423,6 +549,7 @@ function playRoundIntro(data) {
     lastIntroRound = round;
 
     const cands = (data.candidates || []).slice().sort((a, b) => a.candidateId - b.candidateId);
+    boardCandidatesData = cands; // the board reuses these candidates after the intro
     const screen = screens.roundIntro;
     const categoryEl = screen.querySelector('.intro-category');
     const labelEl = screen.querySelector('.intro-label');
@@ -491,13 +618,13 @@ function playRoundIntro(data) {
                 t += 1000;
             }
             t += 1000;
-            at(() => { charEl.textContent = cand.characteristic || ''; introPlaceOff(charEl, off); introSlideIn(charEl); });
+            at(() => { charEl.textContent = (cand.characteristics && cand.characteristics.length) ? cand.characteristics[cand.characteristics.length - 1] : ''; introPlaceOff(charEl, off); introSlideIn(charEl); });
             t += 700;
             t += 3000; // hold
         });
     }
 
-    // Fade everything out, then hand off to the answering (submitted-count) screen.
+    // Fade everything out, then hand off to the candidate board for the answer phase.
     at(() => {
         introFadeTo(categoryEl, 0, 500);
         introFadeTo(labelEl, 0, 500);
@@ -505,7 +632,7 @@ function playRoundIntro(data) {
         introFadeTo(charEl, 0, 500);
     });
     t += 600;
-    at(() => { clearIntroTimeouts(); showScreen('answering'); });
+    at(() => { clearIntroTimeouts(); showBoardAnswering(); });
 }
 
 /**
@@ -530,79 +657,6 @@ function createCandidatePhoto(candidate) {
     // Gracefully fall back to the neon initial if the photo isn't on the receiver.
     img.onerror = () => { img.replaceWith(initialDiv()); };
     return img;
-}
-
-/**
- * Update reveal screen — 3 candidates across the top; the players who picked
- * each candidate drop in one-by-one, grouped by candidate, left to right.
- *
- * Expected message shape (sent by the app's CastBridge on GamePhase.REVEAL):
- *   { type: "reveal", roundNumber, totalRounds, category,
- *     candidates: [ { candidateId, name, age, photo, race } ],
- *     picks:      [ { candidateId, players: [ { name, iconId } ] } ] }
- */
-function updateRevealScreen(data) {
-    const screen = screens.reveal;
-    const container = screen.querySelector('.reveal-candidates');
-    container.innerHTML = '';
-
-    const candidates = data.candidates || [];
-    const picksByCandidate = {};
-    (data.picks || []).forEach(p => { picksByCandidate[p.candidateId] = p.players || []; });
-
-    // Reveal order: all picks, ordered candidate-by-candidate (left to right).
-    const pickEls = [];
-
-    candidates.forEach(candidate => {
-        const col = document.createElement('div');
-        col.className = 'reveal-candidate';
-
-        col.appendChild(createCandidatePhoto(candidate));
-
-        const name = document.createElement('div');
-        name.className = 'candidate-name';
-        name.textContent = candidate.name || '';
-        col.appendChild(name);
-
-        if (candidate.age !== undefined && candidate.age !== null) {
-            const age = document.createElement('div');
-            age.className = 'candidate-age';
-            age.textContent = 'Age ' + candidate.age;
-            col.appendChild(age);
-        }
-
-        const picksWrap = document.createElement('div');
-        picksWrap.className = 'reveal-picks';
-
-        const pickers = picksByCandidate[candidate.candidateId] || [];
-        pickers.forEach(player => {
-            const chip = document.createElement('div');
-            chip.className = 'reveal-pick';
-
-            const icon = document.createElement('span');
-            icon.className = 'icon';
-            icon.appendChild(createIconImg(player.iconId));
-
-            const pname = document.createElement('span');
-            pname.className = 'name';
-            pname.textContent = player.name;
-
-            chip.appendChild(icon);
-            chip.appendChild(pname);
-            picksWrap.appendChild(chip);
-            pickEls.push(chip);
-        });
-
-        col.appendChild(picksWrap);
-        container.appendChild(col);
-    });
-
-    // Staggered "drop in", one name at a time, grouped left to right.
-    let delay = 800;
-    pickEls.forEach(el => {
-        setTimeout(() => el.classList.add('visible'), delay);
-        delay += 650;
-    });
 }
 
 // Track round results state for reordering animation
