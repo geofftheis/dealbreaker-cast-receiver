@@ -636,9 +636,10 @@ function playRoundIntro(data) {
 }
 
 /**
- * Build a candidate photo element. Photos (if present) live in a `candidates/`
- * folder named by the pack's `photo` field; until those are delivered to the
- * receiver, we fall back to a neon initial — same as the app's placeholder.
+ * Build a candidate photo element. Photos live in a `candidates/` folder, named by the pack's
+ * `photo` field. The app now ships downsized .webp, but the receiver keeps the full-size .jpg
+ * originals for the big screen — so we always request the .jpg regardless of the extension the
+ * message carries. Falls back to a neon initial if the photo isn't on the receiver.
  */
 function createCandidatePhoto(candidate) {
     const initialDiv = () => {
@@ -650,10 +651,11 @@ function createCandidatePhoto(candidate) {
 
     if (!candidate.photo) return initialDiv();
 
+    const jpgName = candidate.photo.replace(/\.[a-z0-9]+$/i, '.jpg');
     const img = document.createElement('img');
     img.className = 'candidate-photo';
     img.alt = candidate.name || '';
-    img.src = 'candidates/' + candidate.photo;
+    img.src = 'candidates/' + jpgName;
     // Gracefully fall back to the neon initial if the photo isn't on the receiver.
     img.onerror = () => { img.replaceWith(initialDiv()); };
     return img;
