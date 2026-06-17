@@ -761,28 +761,20 @@ body {
     min-width: 0;
 }
 
-/* Winner badge displayed inline after the top player's name */
+/* Winner/loser badge image displayed inline after the player's name */
 .name-badge-row {
     display: flex;
     align-items: center;
     gap: clamp(8px, 1vw, 12px);
 }
 
-.winner-badge {
-    font-size: clamp(15px, 1.7vw, 22px);
-    font-weight: bold;
-    letter-spacing: 0.06em;
-    color: var(--db-fuchsia);
-    border: 2px solid var(--db-fuchsia);
-    border-radius: 999px;
-    padding: clamp(1px, 0.2vw, 3px) clamp(8px, 1vw, 14px);
-    text-shadow: 0 0 10px rgba(240, 80, 210, 0.5);
-    box-shadow: 0 0 10px rgba(240, 80, 210, 0.35);
-    white-space: nowrap;
+.result-badge {
+    height: clamp(24px, 2.8vw, 35px);
+    width: auto;
 }
 
-#game-results-screen .leaderboard.two-column .winner-badge {
-    font-size: clamp(12px, 1.4vw, 18px);
+#game-results-screen .leaderboard.two-column .result-badge {
+    height: clamp(20px, 2.2vw, 28px);
 }
 
 /* End Screen */

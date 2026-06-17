@@ -884,8 +884,9 @@ function updateRoundResultsScreen(data) {
 function updateGameResultsScreen(data) {
     const screen = screens.gameResults;
 
-    // Top rank gets the WINNER badge
+    // Top rank gets the WINNER badge, bottom rank gets the LOSER badge
     const topRank = Math.min(...data.players.map(p => p.rank));
+    const bottomRank = Math.max(...data.players.map(p => p.rank));
 
     const leaderboard = screen.querySelector('.leaderboard');
     leaderboard.innerHTML = '';
@@ -895,8 +896,12 @@ function updateGameResultsScreen(data) {
     leaderboard.classList.toggle('compact', data.players.length >= 6);
 
     data.players.forEach(player => {
-        const isWinner = player.rank === topRank;
-        const entry = createGameResultEntry(player, isWinner);
+        // Determine badge: winner for top rank, loser for bottom rank
+        let badge = null;
+        if (player.rank === topRank) badge = 'winner';
+        else if (player.rank === bottomRank) badge = 'loser';
+
+        const entry = createGameResultEntry(player, badge);
         entry.classList.add('reveal');
         entry.setAttribute('data-rank', player.rank);
         leaderboard.appendChild(entry);
@@ -920,9 +925,9 @@ function updateGameResultsScreen(data) {
 }
 
 /**
- * Create a game result entry with an optional WINNER badge
+ * Create a game result entry with an optional winner/loser badge
  */
-function createGameResultEntry(player, isWinner) {
+function createGameResultEntry(player, badge) {
     const entry = document.createElement('div');
     entry.className = 'leaderboard-entry rank-' + player.rank;
     entry.setAttribute('data-player-id', player.peerId || player.name);
@@ -946,11 +951,12 @@ function createGameResultEntry(player, isWinner) {
     name.textContent = player.name;
     nameRow.appendChild(name);
 
-    if (isWinner) {
-        const badge = document.createElement('span');
-        badge.className = 'winner-badge';
-        badge.textContent = 'WINNER';
-        nameRow.appendChild(badge);
+    if (badge) {
+        const badgeImg = document.createElement('img');
+        badgeImg.className = 'result-badge';
+        badgeImg.src = badge === 'winner' ? 'dealbreaker_winner.png' : 'dealbreaker_loser.png';
+        badgeImg.alt = badge === 'winner' ? 'Winner' : 'Loser';
+        nameRow.appendChild(badgeImg);
     }
 
     info.appendChild(nameRow);

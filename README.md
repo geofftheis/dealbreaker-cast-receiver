@@ -34,7 +34,7 @@ The app and receiver communicate on the custom namespace **`urn:x-cast:com.dealb
 | `answering` | "X of Y players have picked" (Deal/Breaker has no answer timer) |
 | `reveal` | 3 candidates across the top; the players who picked each drop in one-by-one |
 | `round_results` | Round scores + leaderboard (animated reorder to cumulative standings) |
-| `game_results` | Final standings + WINNER badge |
+| `game_results` | Final standings + winner/loser badges |
 | `end` | Goodbye / disconnect screen |
 | `music_start` / `music_fade_stop` / `music_stop` | Lobby/results background music control |
 | `play_countdown_bell` / `stop_countdown` / `play_bell` | Sound effects |
