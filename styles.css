@@ -358,25 +358,25 @@ body {
     opacity: 0;
 }
 
-/* Shared candidate photo (round intro + board) */
+/* Shared candidate photo (round intro + board): rounded square, white outline on every screen */
 .candidate-photo {
     width: clamp(120px, 13vw, 200px);
     height: clamp(120px, 13vw, 200px);
-    border-radius: 50%;
+    border-radius: clamp(16px, 1.8vw, 28px);
     object-fit: cover;
-    border: 4px solid var(--db-cyan);
-    box-shadow: 0 0 22px rgba(72, 200, 208, 0.5);
+    border: 4px solid var(--db-white);
+    box-shadow: 0 0 18px rgba(255, 255, 255, 0.3);
     background: #111;
 }
 
-/* Neon-initial fallback when no candidate photo is available */
+/* Initial fallback when no candidate photo is available */
 .candidate-photo.initial {
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: clamp(52px, 6vw, 90px);
     font-weight: bold;
-    color: var(--db-cyan);
+    color: var(--db-white);
 }
 
 /* Candidate Board — the answer phase (name / photo / cumulative characteristics + a small
@@ -422,16 +422,6 @@ body {
 .board-photo-holder .candidate-photo {
     width: clamp(150px, 18vw, 260px);
     height: clamp(150px, 18vw, 260px);
-}
-
-/* Middle candidate gets the fuchsia accent for variety */
-.board-candidate:nth-child(2) .candidate-photo {
-    border-color: var(--db-fuchsia);
-    box-shadow: 0 0 22px rgba(240, 80, 210, 0.5);
-}
-
-.board-candidate:nth-child(2) .candidate-photo.initial {
-    color: var(--db-fuchsia);
 }
 
 .board-chars {
