@@ -456,7 +456,7 @@ function buildPickerChip(player) {
 }
 
 // Reveal: fade the characteristics out and drop the players who picked each candidate in
-// underneath, one at a time (~1.8s apart), grouped left to right — roughly synced to the devices.
+// underneath, one at a time (~2.8s apart), grouped left to right — roughly synced to the devices.
 function revealBoard(data) {
     clearBoardTimeouts();
 
@@ -496,7 +496,7 @@ function revealBoard(data) {
         let delay = 0;
         order.forEach(chip => {
             boardTimeouts.push(setTimeout(() => chip.classList.add('visible'), delay));
-            delay += 1800;
+            delay += 2800;
         });
     }, 650));
 }
