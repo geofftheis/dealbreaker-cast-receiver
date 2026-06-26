@@ -13,8 +13,8 @@ Developer Console.
 - `styles.css` — neon-on-black Deal/Breaker styling (cyan `#48C8D0` / fuchsia `#F050D2` on black)
 - `receiver.js` — Cast receiver logic and message handling
 - `dealbreaker_logo.png` — brand logo (connecting / lobby / loading / end screens)
-- `icons/<id>.png` — the 12 player icons (boombox, bow, butterflies, dice, flask, lock,
-  lovebirds, magnet, mixtape, perfume, ring, vinyl) + `checkmark.png`; ids match the app's
+- `icons/<id>.png` — the 12 player icons (boombox, bow, butterflies, dice, lock,
+  lovebirds, magnet, mixtape, perfume, potion, ring, vinyl) + `checkmark.png`; ids match the app's
   `PlayerIcon` enum
 - `*.m4a` — `lobby_music` (looped lobby/results music), `countdown_bell`, `bell_ding`
 

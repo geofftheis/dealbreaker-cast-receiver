@@ -65,7 +65,7 @@ const ICON_SIZE_RATIO = {
     lock: 0.85,
     perfume: 0.84,
     butterflies: 0.83, magnet: 0.83, vinyl: 0.83,
-    flask: 0.81, mixtape: 0.81,
+    mixtape: 0.81, potion: 0.81,
     dice: 0.80,
     boombox: 0.75
 };
@@ -74,7 +74,7 @@ const ICON_OFFSET_Y = {
     boombox: -0.01, lovebirds: -0.01,
     perfume: -0.02,
     magnet: -0.03,
-    flask: -0.04, lock: -0.04, ring: -0.04
+    lock: -0.04, potion: -0.04, ring: -0.04
 };
 const ICON_OFFSET_X = {
     ring: 0.03,
